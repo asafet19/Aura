@@ -34,3 +34,27 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## API Documentation
+
+The app exposes a Route Handler at `/api/interests` for reading and creating interests.
+
+- `GET /api/interests`: returns all interests.
+- `GET /api/interests?interest=cars`: returns synonym-expanded matches (for example, `cars`, `f1`, `formula 1`, `range rover`, etc.).
+- `POST /api/interests`: creates a new interest row.
+
+Example request:
+
+```bash
+curl -X POST "http://localhost:3000/api/interests" \
+  -H "Content-Type: application/json" \
+  -d "{\"interest\":\"cars\",\"userId\":\"user-123\",\"userEmail\":\"alice@gmail.com\"}"
+```
+
+Expected JSON response:
+
+```json
+{
+  "success": true
+}
+```

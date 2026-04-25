@@ -1,4 +1,5 @@
 import { supabase } from "@/utils/supabase";
+import { expandInterestTerms } from "@/utils/interestSynonyms";
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -9,11 +10,26 @@ function readTrimmedString(body: UnknownRecord, key: string): string | undefined
   return t.length ? t : undefined;
 }
 
-export async function GET() {
-  const { data, error } = await supabase
+export async function GET(request: Request) {
+  const url = new URL(request.url);
+  const interest = url.searchParams.get("interest") ?? "";
+  const excludeUserId = url.searchParams.get("excludeUserId") ?? "";
+  const expandedTerms = expandInterestTerms(interest);
+
+  let query = supabase
     .from("interests")
     .select("id, name, user_id, user_email")
     .order("name");
+
+  if (expandedTerms.length) {
+    query = query.in("name", expandedTerms);
+  }
+
+  if (excludeUserId.trim()) {
+    query = query.neq("user_id", excludeUserId.trim());
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     return Response.json({ error: error.message }, { status: 500 });

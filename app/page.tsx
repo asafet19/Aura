@@ -4,6 +4,7 @@ import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/utils/supabase";
+import { expandInterestTerms } from "@/utils/interestSynonyms";
 
 type InterestRow = {
   id: string;
@@ -109,6 +110,7 @@ export default function Home() {
   const [isSuccess, setIsSuccess] = useState(false);
   const [warning, setWarning] = useState("");
   const [allInterests, setAllInterests] = useState<InterestRow[]>([]);
+  const [liveMatches, setLiveMatches] = useState<InterestRow[]>([]);
 
   useEffect(() => {
     void supabase.auth.getSession().then(({ data: { session } }) => {
@@ -149,6 +151,41 @@ export default function Home() {
     };
   }, [fetchData]);
 
+  const fetchMatchesForInterest = useCallback(
+    async (term: string) => {
+      const expandedTerms = expandInterestTerms(term);
+      if (!expandedTerms.length) {
+        setLiveMatches([]);
+        return;
+      }
+
+      const params = new URLSearchParams({
+        interest: term,
+      });
+
+      if (user?.id) {
+        params.set("excludeUserId", user.id);
+      }
+
+      const res = await fetch(`/api/interests?${params.toString()}`);
+      let payload: unknown;
+      try {
+        payload = await res.json();
+      } catch {
+        setLiveMatches([]);
+        return;
+      }
+
+      if (!res.ok) {
+        setLiveMatches([]);
+        return;
+      }
+
+      setLiveMatches(parseInterestsPayload(payload));
+    },
+    [user],
+  );
+
   const myInterests = useMemo(() => {
     if (!user?.id) return [];
     return allInterests.filter((row) => row.user_id === user.id);
@@ -160,12 +197,9 @@ export default function Home() {
   );
 
   const typingMatch = useMemo(() => {
-    const trimmed = interest.trim();
-    if (!trimmed) return undefined;
-    return communityInterests.find(
-      (x) => x.name.toLowerCase() === trimmed.toLowerCase(),
-    );
-  }, [interest, communityInterests]);
+    const grouped = buildCommunityInterests(liveMatches, user?.email ?? undefined);
+    return grouped.length > 0 ? grouped[0] : undefined;
+  }, [liveMatches, user]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -228,6 +262,7 @@ export default function Home() {
 
       await fetchData();
       setInterest("");
+      setLiveMatches([]);
       setWarning("");
       setIsSuccess(true);
       setMessage("Interest saved successfully.");
@@ -283,8 +318,15 @@ export default function Home() {
                 type="text"
                 value={interest}
                 onChange={(event) => {
-                  setInterest(event.target.value);
+                  const nextInterest = event.target.value;
+                  setInterest(nextInterest);
                   setWarning("");
+                  const trimmed = nextInterest.trim();
+                  if (!trimmed) {
+                    setLiveMatches([]);
+                    return;
+                  }
+                  void fetchMatchesForInterest(trimmed);
                 }}
                 placeholder="e.g. Hiking"
                 className="w-full rounded-lg border border-slate-300 px-4 py-3 text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
@@ -342,9 +384,17 @@ export default function Home() {
                   <li key={row.key} className="min-w-0">
                     <div className="rounded-lg border border-amber-300 bg-white px-3 py-2 text-xs text-amber-950 shadow-sm">
                       <div className="font-semibold">{interestTitleCase(row.name)}</div>
-                      <p className="mt-1 break-words text-amber-900/90">
-                        Shared with: {row.emails.map(maskEmail).join(", ")}
-                      </p>
+                      <p className="mt-1 text-amber-900/90">Matching with:</p>
+                      <div className="mt-1 flex flex-wrap gap-1.5">
+                        {row.emails.map((email) => (
+                          <span
+                            key={`${row.key}-${email}`}
+                            className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px]"
+                          >
+                            {maskEmail(email) || "Anonymous"}
+                          </span>
+                        ))}
+                      </div>
                     </div>
                   </li>
                 ))}
