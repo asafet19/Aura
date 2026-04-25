@@ -54,6 +54,6 @@ Advanced Analytics: Future versions will include "Match Strength" scoring based 
 Rate Limiting: To protect the anonymous endpoint from spam, I would integrate Upstash/Redis to limit submissions by IP address.
 
 Deliverables
-GitHub Repository: [Insert Link]
+GitHub Repository: https://github.com/asafet19/Aura 
 
-Live Deployment (Vercel): [Insert Link]
+Live Deployment (Vercel): https://aura-rouge-delta.vercel.app/ 
