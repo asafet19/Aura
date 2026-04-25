@@ -1,5 +1,5 @@
 import { supabase } from "@/utils/supabase";
-import { expandInterestTerms } from "@/utils/interestSynonyms";
+import { expandInterestTerms, normalizeInterest } from "@/utils/interestSynonyms";
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -51,7 +51,7 @@ export async function POST(request: Request) {
   }
 
   const body = parsed as UnknownRecord;
-  const interest = readTrimmedString(body, "interest")?.toLowerCase() ?? "";
+  const interest = normalizeInterest(readTrimmedString(body, "interest") ?? "");
   const userId = readTrimmedString(body, "userId") ?? "";
   const rawEmail = body.userEmail;
   const userEmail =
@@ -65,6 +65,25 @@ export async function POST(request: Request) {
 
   if (!userId) {
     return Response.json({ error: "User is required" }, { status: 400 });
+  }
+
+  const { data: existingInterest, error: duplicateCheckError } = await supabase
+    .from("interests")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("name", interest)
+    .limit(1)
+    .maybeSingle();
+
+  if (duplicateCheckError) {
+    return Response.json({ error: duplicateCheckError.message }, { status: 500 });
+  }
+
+  if (existingInterest) {
+    return Response.json(
+      { error: "You have already added this interest" },
+      { status: 409 },
+    );
   }
 
   const { error } = await supabase.from("interests").insert({

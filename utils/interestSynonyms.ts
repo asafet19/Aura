@@ -6,7 +6,7 @@ const SYNONYM_GROUPS: readonly string[][] = [
   ["ai", "artificial intelligence", "machine learning", "ml"],
 ];
 
-function normalizeInterest(value: string): string {
+export function normalizeInterest(value: string): string {
   return value.trim().toLowerCase().replace(/\s+/g, " ");
 }
 

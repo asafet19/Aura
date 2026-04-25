@@ -46,7 +46,7 @@ The app exposes a Route Handler at `/api/interests` for reading and creating int
 Example request:
 
 ```bash
-curl -X POST "http://localhost:3000/api/interests" \
+curl -X POST "https://aura-rouge-delta.vercel.app/api/interests" \
   -H "Content-Type: application/json" \
   -d "{\"interest\":\"cars\",\"userId\":\"user-123\",\"userEmail\":\"alice@gmail.com\"}"
 ```

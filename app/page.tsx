@@ -4,7 +4,7 @@ import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/utils/supabase";
-import { expandInterestTerms } from "@/utils/interestSynonyms";
+import { expandInterestTerms, normalizeInterest } from "@/utils/interestSynonyms";
 
 type InterestRow = {
   id: string;
@@ -179,6 +179,16 @@ export default function Home() {
     return allInterests.filter((row) => row.user_id === user.id);
   }, [allInterests, user]);
 
+  const myUniqueInterests = useMemo(() => {
+    const uniqueByName = new Map<string, InterestRow>();
+    for (const row of myInterests) {
+      const normalized = normalizeInterest(row.name);
+      if (!normalized || uniqueByName.has(normalized)) continue;
+      uniqueByName.set(normalized, { ...row, name: normalized });
+    }
+    return [...uniqueByName.values()].sort((a, b) => a.name.localeCompare(b.name));
+  }, [myInterests]);
+
   const communityInterests = useMemo(
     () => buildCommunityInterests(allInterests, user?.email ?? undefined),
     [allInterests, user],
@@ -191,8 +201,8 @@ export default function Home() {
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const trimmed = interest.trim();
-    if (!trimmed) {
+    const normalizedInterest = normalizeInterest(interest);
+    if (!normalizedInterest) {
       setWarning("");
       setIsSuccess(false);
       setMessage("Please enter an interest.");
@@ -205,12 +215,12 @@ export default function Home() {
       return;
     }
 
-    const value = trimmed.toLowerCase();
+    const value = normalizedInterest;
     const isDuplicate = myInterests.some(
-      (row) => row.name.trim().toLowerCase() === value,
+      (row) => normalizeInterest(row.name) === value,
     );
     if (isDuplicate) {
-      setWarning("You already added this interest!");
+      setWarning("You have already added this interest");
       setIsSuccess(false);
       setMessage("");
       return;
@@ -309,12 +319,12 @@ export default function Home() {
                   const nextInterest = event.target.value;
                   setInterest(nextInterest);
                   setWarning("");
-                  const trimmed = nextInterest.trim();
-                  if (!trimmed) {
+                  const normalizedTypingInterest = normalizeInterest(nextInterest);
+                  if (!normalizedTypingInterest) {
                     setLiveMatches([]);
                     return;
                   }
-                  void fetchMatchesForInterest(trimmed);
+                  void fetchMatchesForInterest(normalizedTypingInterest);
                 }}
                 placeholder="e.g. Hiking"
                 className="w-full rounded-lg border border-slate-300 px-4 py-3 text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
@@ -346,9 +356,9 @@ export default function Home() {
               My Interests
             </h2>
             <p className="mt-1 text-xs text-indigo-700/80">Personal</p>
-            {myInterests.length > 0 ? (
+            {myUniqueInterests.length > 0 ? (
               <ul className="mt-4 flex list-none flex-wrap gap-2 p-0">
-                {myInterests.map((row) => (
+                {myUniqueInterests.map((row) => (
                   <li key={row.id}>
                     <span className="inline-flex items-center rounded-full border border-indigo-300 bg-white px-3 py-1 text-xs font-medium text-indigo-950 shadow-sm">
                       {row.name}
