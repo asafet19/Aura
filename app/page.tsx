@@ -57,18 +57,6 @@ function interestTitleCase(name: string): string {
     .join(" ");
 }
 
-function maskEmail(value: string): string {
-  const trimmed = value.trim();
-  if (!trimmed) return "";
-  if (trimmed.toLowerCase() === "anonymous") return trimmed;
-  const at = trimmed.indexOf("@");
-  if (at <= 0 || at === trimmed.length - 1) return "***";
-  const local = trimmed.slice(0, at);
-  const domain = trimmed.slice(at + 1);
-  if (!local.length) return `***@${domain}`;
-  return `${local.charAt(0)}***@${domain}`;
-}
-
 function buildCommunityInterests(
   rows: InterestRow[],
   currentEmail: string | undefined,
@@ -337,8 +325,8 @@ export default function Home() {
               ) : null}
               {typingMatch ? (
                 <p className="mt-2 text-center text-sm text-slate-600">
-                  Great choice! Shared with:{" "}
-                  {typingMatch.emails.map(maskEmail).join(", ")}
+                  Great choice! {typingMatch.emails.length} verified user
+                  {typingMatch.emails.length === 1 ? "" : "s"} share this interest.
                 </p>
               ) : null}
             </div>
@@ -386,14 +374,12 @@ export default function Home() {
                       <div className="font-semibold">{interestTitleCase(row.name)}</div>
                       <p className="mt-1 text-amber-900/90">Matching with:</p>
                       <div className="mt-1 flex flex-wrap gap-1.5">
-                        {row.emails.map((email) => (
-                          <span
-                            key={`${row.key}-${email}`}
-                            className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px]"
-                          >
-                            {maskEmail(email) || "Anonymous"}
-                          </span>
-                        ))}
+                        <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-100 px-2 py-0.5 text-[11px] font-medium text-emerald-800">
+                          Verified User
+                        </span>
+                        <span className="text-[11px] text-amber-900/80">
+                          x{row.emails.length}
+                        </span>
                       </div>
                     </div>
                   </li>
