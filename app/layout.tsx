@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "AuraSync",
+  title: "Aura",
   description:
     "Discover shared interests and connect with your community. Sign in, add what you care about, and see who else cares about the same topics.",
 };
