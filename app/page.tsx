@@ -19,6 +19,12 @@ type CommunityTag = {
   emails: string[];
 };
 
+type InterestSubmitPayload = {
+  interest: string;
+  userId: string;
+  userEmail: string | null;
+};
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -90,6 +96,28 @@ function buildCommunityInterests(
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
+async function fetchInterestRows(path: string): Promise<InterestRow[]> {
+  const response = await fetch(path);
+  let payload: unknown = null;
+
+  try {
+    payload = await response.json();
+  } catch {
+    return [];
+  }
+
+  if (!response.ok) return [];
+  return parseInterestsPayload(payload);
+}
+
+function createInterestRequestPath(term: string, userId: string | undefined): string {
+  const params = new URLSearchParams({ interest: term });
+  if (userId) {
+    params.set("excludeUserId", userId);
+  }
+  return `/api/interests?${params.toString()}`;
+}
+
 export default function Home() {
   const [user, setUser] = useState<User | null>(null);
   const [interest, setInterest] = useState("");
@@ -113,19 +141,12 @@ export default function Home() {
   }, []);
 
   const fetchData = useCallback(async () => {
-    const res = await fetch("/api/interests");
-    let payload: unknown;
     try {
-      payload = await res.json();
+      const rows = await fetchInterestRows("/api/interests");
+      setAllInterests(rows);
     } catch {
       setAllInterests([]);
-      return;
     }
-    if (!res.ok) {
-      setAllInterests([]);
-      return;
-    }
-    setAllInterests(parseInterestsPayload(payload));
   }, []);
 
   useEffect(() => {
@@ -146,30 +167,13 @@ export default function Home() {
         setLiveMatches([]);
         return;
       }
-
-      const params = new URLSearchParams({
-        interest: term,
-      });
-
-      if (user?.id) {
-        params.set("excludeUserId", user.id);
-      }
-
-      const res = await fetch(`/api/interests?${params.toString()}`);
-      let payload: unknown;
       try {
-        payload = await res.json();
+        const path = createInterestRequestPath(term, user?.id);
+        const rows = await fetchInterestRows(path);
+        setLiveMatches(rows);
       } catch {
         setLiveMatches([]);
-        return;
       }
-
-      if (!res.ok) {
-        setLiveMatches([]);
-        return;
-      }
-
-      setLiveMatches(parseInterestsPayload(payload));
     },
     [user],
   );
@@ -198,6 +202,22 @@ export default function Home() {
     const grouped = buildCommunityInterests(liveMatches, user?.email ?? undefined);
     return grouped.length > 0 ? grouped[0] : undefined;
   }, [liveMatches, user]);
+
+  const handleInterestChange = useCallback(
+    (nextInterest: string) => {
+      setInterest(nextInterest);
+      setWarning("");
+
+      const normalizedTypingInterest = normalizeInterest(nextInterest);
+      if (!normalizedTypingInterest) {
+        setLiveMatches([]);
+        return;
+      }
+
+      void fetchMatchesForInterest(normalizedTypingInterest);
+    },
+    [fetchMatchesForInterest],
+  );
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -231,16 +251,18 @@ export default function Home() {
     setWarning("");
 
     try {
+      const payload: InterestSubmitPayload = {
+        interest: value,
+        userId: user.id,
+        userEmail: user.email ?? null,
+      };
+
       const response = await fetch("/api/interests", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          interest: value,
-          userId: user.id,
-          userEmail: user.email ?? null,
-        }),
+        body: JSON.stringify(payload),
       });
 
       let data: unknown = null;
@@ -315,17 +337,7 @@ export default function Home() {
               <input
                 type="text"
                 value={interest}
-                onChange={(event) => {
-                  const nextInterest = event.target.value;
-                  setInterest(nextInterest);
-                  setWarning("");
-                  const normalizedTypingInterest = normalizeInterest(nextInterest);
-                  if (!normalizedTypingInterest) {
-                    setLiveMatches([]);
-                    return;
-                  }
-                  void fetchMatchesForInterest(normalizedTypingInterest);
-                }}
+                onChange={(event) => handleInterestChange(event.target.value)}
                 placeholder="e.g. Hiking"
                 className="w-full rounded-lg border border-slate-300 px-4 py-3 text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
                 disabled={isSubmitting}

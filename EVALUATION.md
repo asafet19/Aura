@@ -1,5 +1,7 @@
- ** AI / Cursor Usage (CORE PART OF EVALUATION) **
+---
+ ***AI / Cursor Usage (CORE PART OF EVALUATION)***
 
+---
 
 ## 1. Prompts Used
 
@@ -77,13 +79,13 @@ The system provides a public endpoint to submit interests asynchronously.
 * **Body:** `{"name": "Your Interest Here"}`
 
 **cURL Example:**
-
+```bash
 curl -X POST https://aura-rouge-delta.vercel.app/api/interests \
 -H "Content-Type: application/json" \
 -d '{"name": "Machine Learning"}'
+```
 
-
-
+---
 
 ## Deliverables
 

@@ -27,25 +27,32 @@ export default function LoginPage() {
   const handleAuth = async (type: "LOGIN" | "SIGNUP") => {
     setLoading(true);
     setMessage("");
+    try {
+      const { error } =
+        type === "LOGIN"
+          ? await supabase.auth.signInWithPassword({ email, password })
+          : await supabase.auth.signUp({
+              email,
+              password,
+              options: {
+                emailRedirectTo: `${getBaseUrl()}/`,
+              },
+            });
 
-    const { error } =
-      type === "LOGIN"
-        ? await supabase.auth.signInWithPassword({ email, password })
-        : await supabase.auth.signUp({
-            email,
-            password,
-            options: {
-              emailRedirectTo: `${getBaseUrl()}/`,
-            },
-          });
+      if (error) {
+        setMessage(error.message);
+        return;
+      }
 
-    if (error) {
-      setMessage(error.message);
-    } else {
       setMessage(type === "LOGIN" ? "Logged in!" : "Check your email for a link!");
-      if (type === "LOGIN") router.push("/");
+      if (type === "LOGIN") {
+        router.push("/");
+      }
+    } catch {
+      setMessage("Authentication failed. Please try again.");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
